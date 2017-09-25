@@ -18,9 +18,9 @@ class App {
 
     this.controlsEnabled = false;
     this.performance = {
-      anisotropy: 0,
-      antialias: false,
-      shadow: false,
+      anisotropy: 16,
+      antialias: true,
+      shadow: true,
     }
     this.ressources = {
       textures: {},
@@ -76,8 +76,8 @@ class App {
     this.ressources.textures.grass.anisotropy = this.performance.anisotropy;
 
     this.ressources.textures.wood = textureLoader.load('textures/hardwood2_diffuse.jpg');
-    this.ressources.textures.wood.wrapS = THREE.RepeatWrapping;
-    this.ressources.textures.wood.wrapT = THREE.RepeatWrapping;
+    this.ressources.textures.wood.wrapS = THREE.ClampToEdgeWrapping;
+    this.ressources.textures.wood.wrapT = THREE.ClampToEdgeWrapping;
     this.ressources.textures.wood.repeat.set( 1, 1 );
     this.ressources.textures.wood.anisotropy = this.performance.anisotropy;
 
@@ -98,6 +98,10 @@ class App {
     this.ressources.models.tree_27 = new THREE.Object3D();
     colladaLoader.load('models/tree_27.dae', (collada) =>   {
       this.ressources.models.tree_27.copy(collada.scene);
+    });
+    this.ressources.models.goku = new THREE.Object3D();
+    colladaLoader.load('models/goku-dae/goku.dae', (collada) =>   {
+      this.ressources.models.goku.copy(collada.scene);
     });
   }
 
@@ -210,6 +214,9 @@ class App {
   }
 
   initScene () {
+    this.scene.background = new THREE.Color().setHex( 0x030f23 )
+    this.scene.fog = new THREE.Fog(0x030f23, 10, 1000)
+
     let grassMaterial = new THREE.MeshStandardMaterial({
     	bumpScale: 1,
     	roughness: 64,
@@ -235,29 +242,30 @@ class App {
     ground.position.y = 0;
     ground.position.z = 0;
     ground.rotateX(-Math.PI /2)
-    ground.receiveShadow = true;
-    ground.castShadow = true;
-    ground.matrixAutoUpdate = false;
-    ground.updateMatrix();
+    // ground.receiveShadow = true;
+    // ground.castShadow = true;
+
+    // ground.matrixAutoUpdate = false;
+    // ground.updateMatrix();
 
     this.scene.add(ground)
 
 
-    let cubeGeometry = new THREE.BoxGeometry( 1, 10, 1 );
+    let cubeGeometry = new THREE.BoxGeometry( 10, 10, 10 );
     for ( let face in cubeGeometry.faces ) {
       cubeGeometry.faces[ face ].materialIndex = 0;
     }
 
     let cubes = [];
-    for (let i = 0; i < 100000; i++) {
-      let cube = new THREE.Mesh( cubeGeometry, woodMaterial );
+    for (let i = 0; i < 100; i++) {
+      let cube = new THREE.Mesh( cubeGeometry, Math.round(Math.random()) ? woodMaterial : brickMaterial);
       cube.position.x = Math.trunc(Math.random() * 2000) - 1000;
       cube.position.y = 5;
       cube.position.z = Math.trunc(Math.random() * 2000) - 1000;
-      cube.receiveShadow = true;
-      cube.castShadow = true;
-      cube.matrixAutoUpdate = false;
-      cube.updateMatrix();
+      // cube.receiveShadow = true;
+      // cube.castShadow = true;
+      // cube.matrixAutoUpdate = false;
+      // cube.updateMatrix();
 
       this.scene.add(cube)
       // cubes.push(cube);
@@ -274,7 +282,7 @@ class App {
     // world.receiveShadow = true;
     // world.castShadow = true;
     // this.scene.add( world );
-
+    //
     // let tree = this.ressources.models.tree_19.clone();
     // tree.position.x = -5
     // tree.position.y = 0
@@ -283,14 +291,24 @@ class App {
     // // tree.matrixAutoUpdate = false;
     // // tree.updateMatrix();
     // this.scene.add(tree)
+
+
+    let goku = this.ressources.models.goku;
+    goku.position.x = -5
+    goku.position.y = 0
+    goku.position.z = -5
+    goku.scale.x = goku.scale.y = goku.scale.z = 1;
+    // tree.matrixAutoUpdate = false;
+    // tree.updateMatrix();
+    this.scene.add(goku)
   }
 
   updateCamera (delta, velocity, direction) {
     let obj = this.controls.getObject()
 
 
-    obj.translateX( -(Number( this.actions.left ) - Number( this.actions.right )) * 1 )
-    obj.translateZ( -(Number( this.actions.forward ) - Number( this.actions.backward )) * 1 )
+    obj.translateX( -(Number( this.actions.left ) - Number( this.actions.right )) * 1 *(Number(this.actions.runing+1)) )
+    obj.translateZ( -(Number( this.actions.forward ) - Number( this.actions.backward )) * 1 *(Number(this.actions.runing+1)) )
     //
     // velocity.x -= velocity.x * 100.0 * delta;
     // velocity.z  -= velocity.z * 100.0 * delta;
@@ -349,7 +367,7 @@ class App {
 
     	this.renderer.render(this.scene, this.camera);
 
-      console.log(this.renderer.info)
+      console.log(this.renderer.info.render)
 
       prevTime = time;
     }
