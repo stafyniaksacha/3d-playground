@@ -1,10 +1,14 @@
 class App {
   constructor () {
+    this.kuzzle = new Kuzzle('localhost');
+    this.playerName = window.location.hash.substr(1) || 'default';
+
     this.scene = new THREE.Scene();
     this.renderer = new THREE.WebGLRenderer();
     this.camera = new THREE.PerspectiveCamera( 35, window.innerWidth/window.innerHeight, 0.1, 1000 );
     this.controls = new THREE.PointerLockControls(this.camera);
     this.stats = [
+      new Stats(),
       new Stats(),
       new Stats(),
       new Stats()
@@ -15,12 +19,17 @@ class App {
     this.stats[1].domElement.style.cssText = 'position:absolute;top:0px;left:80px;';
     this.stats[2].showPanel(2)
     this.stats[2].domElement.style.cssText = 'position:absolute;top:0px;left:160px;';
+    this.stats[3].showPanel(3)
+    this.stats[3].domElement.style.cssText = 'position:absolute;top:50px;left:0px;';
+
+		this.xPanel = this.stats[3].addPanel( new Stats.Panel( 'calls', '#ff8', '#221' ) );
+		this.yPanel = this.stats[3].addPanel( new Stats.Panel( 'vert', '#f8f', '#212' ) );
 
     this.controlsEnabled = false;
     this.performance = {
-      anisotropy: 16,
-      antialias: true,
-      shadow: true,
+      anisotropy: 0,
+      antialias: false,
+      shadow: false,
     }
     this.ressources = {
       textures: {},
@@ -53,6 +62,7 @@ class App {
       document.body.appendChild( this.stats[0].dom );
       document.body.appendChild( this.stats[1].dom );
       document.body.appendChild( this.stats[2].dom );
+      document.body.appendChild( this.stats[3].dom );
 
 
       requestAnimationFrame(() => this.animateScene());
@@ -61,8 +71,9 @@ class App {
 
   loadRessources (onLoad) {
     let loaderManager = new THREE.LoadingManager();
-    let colladaLoader = new THREE.ColladaLoader(loaderManager );
-    let textureLoader = new THREE.TextureLoader( loaderManager );
+    let colladaLoader = new THREE.ColladaLoader(loaderManager);
+    let textureLoader = new THREE.TextureLoader(loaderManager);
+    let objectLoader = new THREE.ObjectLoader(loaderManager);
 
     loaderManager.onProgress = ( item, loaded, total ) => {
         console.log(`[${loaded}/${total}] loaded "${item}"`)
@@ -86,23 +97,27 @@ class App {
     this.ressources.textures.brick.wrapT = THREE.RepeatWrapping;
     this.ressources.textures.brick.repeat.set( 1, 1 );
     this.ressources.textures.brick.anisotropy = this.performance.anisotropy;
-
-    this.ressources.models.tree_19 = new THREE.Object3D();
-    colladaLoader.load('models/tree_19.dae', (collada) =>   {
-      this.ressources.models.tree_19.copy(collada.scene);
-    });
-    this.ressources.models.tree_20 = new THREE.Object3D();
-    colladaLoader.load('models/tree_20.dae', (collada) =>   {
-      this.ressources.models.tree_20.copy(collada.scene);
-    });
-    this.ressources.models.tree_27 = new THREE.Object3D();
-    colladaLoader.load('models/tree_27.dae', (collada) =>   {
-      this.ressources.models.tree_27.copy(collada.scene);
-    });
-    this.ressources.models.goku = new THREE.Object3D();
-    colladaLoader.load('models/goku-dae/goku.dae', (collada) =>   {
-      this.ressources.models.goku.copy(collada.scene);
-    });
+    //
+    // this.ressources.models.tree_19 = new THREE.Object3D();
+    // colladaLoader.load('models/tree_19.dae', (collada) =>   {
+    //   this.ressources.models.tree_19.copy(collada.scene);
+    // });
+    // this.ressources.models.tree_20 = new THREE.Object3D();
+    // colladaLoader.load('models/tree_20.dae', (collada) =>   {
+    //   this.ressources.models.tree_20.copy(collada.scene);
+    // });
+    // this.ressources.models.tree_27 = new THREE.Object3D();
+    // colladaLoader.load('models/tree_27.dae', (collada) =>   {
+    //   this.ressources.models.tree_27.copy(collada.scene);
+    // });
+    //
+    // this.ressources.models.goku = new THREE.Object3D();
+    // // colladaLoader.load('models/goku-dae/goku.dae', (collada) =>   {
+    // //   this.ressources.models.goku.copy(collada.scene);
+    // // });
+		// objectLoader.load("models/goku/goku.json", (obj)  =>{
+		//  	this.ressources.models.goku.copy( obj );
+		// });
   }
 
   initControls () {
@@ -206,10 +221,10 @@ class App {
     light.intensity = 1;
     // light.decay = 0;
     light.position.set( -100, 50, 50 );
-    light.target = this.controls.getObject()
+    //light.target = this.controls.getObject()
     this.scene.add( light );
 
-    let ambient = new THREE.AmbientLight( 0xffffff, 0.0);
+    let ambient = new THREE.AmbientLight( 0xffffff, 0.1);
     this.scene.add( ambient );
   }
 
@@ -242,7 +257,7 @@ class App {
     ground.position.y = 0;
     ground.position.z = 0;
     ground.rotateX(-Math.PI /2)
-    // ground.receiveShadow = true;
+    ground.receiveShadow = true;
     // ground.castShadow = true;
 
     // ground.matrixAutoUpdate = false;
@@ -271,6 +286,17 @@ class App {
       // cubes.push(cube);
     }
 
+      let r = (o) => {
+        if (o.children) {
+          for(let c of o.children) {
+            r(c);
+          }
+        }
+
+        o.castShadow = true
+        o.receiveShadow = true
+        console.log(o.children, o.uuid)
+      }
 
     // let worldGeometry = new THREE.Geometry();
     // worldGeometry.merge( ground.geometry, ground.matrix, 0 );
@@ -293,56 +319,57 @@ class App {
     // this.scene.add(tree)
 
 
-    let goku = this.ressources.models.goku;
-    goku.position.x = -5
-    goku.position.y = 0
-    goku.position.z = -5
-    goku.scale.x = goku.scale.y = goku.scale.z = 1;
-    // tree.matrixAutoUpdate = false;
-    // tree.updateMatrix();
-    this.scene.add(goku)
+    // let goku = this.ressources.models.goku.clone();
+    // goku.position.x = 1
+    // goku.position.y = -11
+    // goku.position.z = 2
+    // r(goku)
+    // goku.scale.x = goku.scale.y = goku.scale.z = 65;
+    // // tree.matrixAutoUpdate = false;
+    // // tree.updateMatrix();
+    // this.controls.getObject().add(goku)
   }
 
   updateCamera (delta, velocity, direction) {
-    let obj = this.controls.getObject()
+    // let obj = this.controls.getObject()
+    //
+    //
+    // obj.translateX( -(Number( this.actions.left ) - Number( this.actions.right )) * 1 *(Number(this.actions.runing+1)) )
+    // obj.translateZ( -(Number( this.actions.forward ) - Number( this.actions.backward )) * 1 *(Number(this.actions.runing+1)) )
 
+    velocity.x -= velocity.x * 10.0 * delta;
+    velocity.z  -= velocity.z * 10.0 * delta;
 
-    obj.translateX( -(Number( this.actions.left ) - Number( this.actions.right )) * 1 *(Number(this.actions.runing+1)) )
-    obj.translateZ( -(Number( this.actions.forward ) - Number( this.actions.backward )) * 1 *(Number(this.actions.runing+1)) )
-    //
-    // velocity.x -= velocity.x * 100.0 * delta;
-    // velocity.z  -= velocity.z * 100.0 * delta;
-    //
-    // velocity.y -= 9.8/2 * 100.0 * delta; // 100.0 = mass
-    //
-    // direction.z = Number( this.actions.forward ) - Number( this.actions.backward );
-    // direction.x = Number( this.actions.left ) - Number( this.actions.right );
-    // direction.normalize(); // this ensures consistent movements in all directions
-    //
-    //   if (this.actions.jump) {
-    //     velocity.y  += 200.0;
-    //     this.actions.jump = false;
-    //   }
-    // if ( this.actions.forward || this.actions.backward ) velocity.z -= direction.z * 4000.0 * delta;
-    // if ( this.actions.left || this.actions.right ) velocity.x -= direction.x * 4000.0 * delta;
-    //
-    // this.controls.getObject().translateY( velocity.y/4 * delta );
-    // if (this.actions.runing) {
-    //   this.controls.getObject().translateX( velocity.x * delta * 1.2);
-    //   this.controls.getObject().translateZ( velocity.z * delta * 1.8);
-    // }
-    // else {
-    //   this.controls.getObject().translateX( velocity.x * delta );
-    //   this.controls.getObject().translateZ( velocity.z * delta );
-    // }
-    //
-    // if ( this.controls.getObject().position.y < 11 ) {
-    //
-    //   velocity.y = 0;
-    //   this.controls.getObject().position.y = 11;
-    //
-    //   this.actions.canJump = true;
-    // }
+    velocity.y -= 9.8/2 * 100.0 * delta; // 100.0 = mass
+
+    direction.z = Number( this.actions.forward ) - Number( this.actions.backward );
+    direction.x = Number( this.actions.left ) - Number( this.actions.right );
+    direction.normalize(); // this ensures consistent movements in all directions
+
+    if (this.actions.jump) {
+      velocity.y  += 200.0;
+      this.actions.jump = false;
+    }
+    if ( this.actions.forward || this.actions.backward ) velocity.z -= direction.z * 400.0 * delta;
+    if ( this.actions.left || this.actions.right ) velocity.x -= direction.x * 400.0 * delta;
+
+    this.controls.getObject().translateY( velocity.y/4 * delta );
+    if (this.actions.runing) {
+      this.controls.getObject().translateX( velocity.x * delta * 1.2);
+      this.controls.getObject().translateZ( velocity.z * delta * 1.8);
+    }
+    else {
+      this.controls.getObject().translateX( velocity.x * delta );
+      this.controls.getObject().translateZ( velocity.z * delta );
+    }
+
+    if ( this.controls.getObject().position.y < 11 ) {
+
+      velocity.y = 0;
+      this.controls.getObject().position.y = 11;
+
+      this.actions.canJump = true;
+    }
   }
 
   animateScene () {
@@ -350,6 +377,61 @@ class App {
     let prevTime = performance.now();
     let velocity = new THREE.Vector3();
     let direction = new THREE.Vector3();
+    let maxV = 0;
+    let maxC = 0;
+
+
+    let playerGeometry = new THREE.BoxGeometry( 3, 11, 3 )
+    let playerMaterial = new THREE.MeshStandardMaterial({ color: 0x41d941})
+    let players = {};
+    let gameRoom = this.kuzzle.collection('game', '3d');
+
+    gameRoom.subscribe({}, {subscribeToSelf: false, users: 'all', volatile: {playerName: this.playerName}}, (error, result) => {
+      if (!result.volatile.playerName) {
+        console.log('discard message without volatile playerName');
+      }
+
+      if (result.user === 'in') {
+        console.log('gameRoom user in :', result)
+
+        players[result.volatile.playerName] = {
+          object: new THREE.Mesh(playerGeometry, playerMaterial)
+        }
+
+        players[result.volatile.playerName].object.position.x = 0;
+        players[result.volatile.playerName].object.position.y = 0;
+        players[result.volatile.playerName].object.position.z = 0;
+
+        this.scene.add(players[result.volatile.playerName].object);
+      }
+      else if (result.user === 'out') {
+        console.log('gameRoom user out:', result)
+
+        if (players[result.volatile.playerName]) {
+          this.scene.remove(players[result.volatile.playerName].object)
+          delete players[result.volatile.playerName];
+        }
+      }
+      else if (result.document.content.position) {
+        if (!players[result.volatile.playerName]) {
+          players[result.volatile.playerName] = {
+            object: new THREE.Mesh(playerGeometry, playerMaterial)
+          }
+
+          players[result.volatile.playerName].object.position.x = 0;
+          players[result.volatile.playerName].object.position.y = 0;
+          players[result.volatile.playerName].object.position.z = 0;
+
+          this.scene.add(players[result.volatile.playerName].object);
+        }
+        players[result.volatile.playerName].object.position.x = result.document.content.position.x;
+        players[result.volatile.playerName].object.position.y = result.document.content.position.y;
+        players[result.volatile.playerName].object.position.z = result.document.content.position.z;
+
+
+        // players[result.volatile.playerName].object.position = result.document.content.position;
+      }
+    })
 
     let render = (t) => {
       requestAnimationFrame(render);
@@ -364,10 +446,22 @@ class App {
       this.stats[0].update();
       this.stats[1].update();
       this.stats[2].update();
+      this.stats[3].update();
+      maxC = Math.max(maxC, this.renderer.info.render.calls);
+      maxV = Math.max(maxV, this.renderer.info.render.vertices);
+      this.xPanel.update( this.renderer.info.render.calls, maxC ); //this.renderer.info.render.calls
+			this.yPanel.update( this.renderer.info.render.vertices, maxV ); //this.renderer.info.render.vertices
 
     	this.renderer.render(this.scene, this.camera);
 
-      console.log(this.renderer.info.render)
+      // each 1000 frames, send xyz coords
+      if (t % 1000) {
+        gameRoom.publishMessage({
+          position: this.controls.getObject().position
+        }, {volatile: {playerName: this.playerName}, queuable: false})
+      }
+
+      // console.log(this.renderer.info.render)
 
       prevTime = time;
     }
